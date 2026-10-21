@@ -62,12 +62,39 @@
             </button>
         </div>
 
-        <!-- Signature Area (Kanvas Tanda Tangan) -->
+        <!-- Signature Area (Kanvas & Pengaturan Tanda Tangan) -->
         <div id="signature-area" class="w-full max-w-2xl hidden flex-col items-center mt-6">
-            <h3 class="text-lg font-semibold mb-2 text-gray-700">Silakan Tanda Tangan di Bawah:</h3>
-            <!-- touch-none penting agar layar HP tidak ikut ter-scroll saat tanda tangan -->
+            <h3 class="text-lg font-semibold mb-4 text-gray-700">Pengaturan Tanda Tangan:</h3>
+            
+            <!-- Pilihan Halaman & Posisi -->
+            <div class="w-full flex flex-col md:flex-row justify-center gap-4 mb-6">
+                <!-- Dropdown Halaman -->
+                <div class="flex flex-col items-start w-full md:w-1/2">
+                    <label class="text-sm text-gray-600 font-medium mb-1">Target Halaman (Khusus PDF):</label>
+                    <select id="page-selection" onchange="toggleSpecificPage()" class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+                        <option value="last">Halaman Terakhir Saja</option>
+                        <option value="all">Semua Halaman (Untuk Paraf)</option>
+                        <option value="specific">Halaman Tertentu...</option>
+                    </select>
+                    <input type="number" id="specific-page-input" class="hidden w-full border border-gray-300 rounded px-3 py-2 text-sm mt-2" min="1" placeholder="Masukkan Nomor Halaman (Misal: 2)">
+                </div>
+
+                <!-- Dropdown Posisi -->
+                <div class="flex flex-col items-start w-full md:w-1/2">
+                    <label class="text-sm text-gray-600 font-medium mb-1">Posisi Tanda Tangan:</label>
+                    <select id="sig-position" class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+                        <option value="right">Kanan Bawah</option>
+                        <option value="left">Kiri Bawah</option>
+                        <option value="center">Tengah Bawah</option>
+                    </select>
+                </div>
+            </div>
+
+            <h3 class="text-md font-semibold mb-2 text-gray-700">Silakan Coret di Bawah:</h3>
+            <!-- Kanvas touch-none penting agar layar HP tidak ikut ter-scroll saat tanda tangan -->
             <canvas id="sig-canvas" width="300" height="150" class="border-2 border-dashed border-gray-400 rounded-lg bg-white shadow-inner touch-none cursor-crosshair"></canvas>
-            <div class="mt-4 flex gap-4">
+            
+            <div class="mt-6 flex gap-4">
                 <button onclick="clearCanvas()" class="bg-red-100 text-red-600 px-4 py-2 rounded-lg font-medium hover:bg-red-200 transition">Hapus Ulang</button>
                 <button onclick="saveAndGeneratePDF()" class="bg-green-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-700 transition">Selesai & Download PDF</button>
             </div>
@@ -112,7 +139,18 @@
             initCanvas();
         }
 
-        // 3. Logika Menggambar di Kanvas (Mouse & Touch)
+        // 3. Fungsi memunculkan input nomor halaman jika dipilih
+        function toggleSpecificPage() {
+            const select = document.getElementById('page-selection').value;
+            const input = document.getElementById('specific-page-input');
+            if (select === 'specific') {
+                input.classList.remove('hidden');
+            } else {
+                input.classList.add('hidden');
+            }
+        }
+
+        // 4. Logika Menggambar di Kanvas (Mouse & Touch)
         const canvas = document.getElementById('sig-canvas');
         const ctx = canvas.getContext('2d');
         let isDrawing = false;
@@ -166,57 +204,88 @@
             ctx.clearRect(0, 0, canvas.width, canvas.height);
         }
 
-        // 4. Logika Membuat PDF dengan pdf-lib (Mendukung PDF & Gambar)
+        // 5. Logika Membuat PDF dengan pdf-lib (Mendukung PDF & Gambar, Posisi, & Halaman)
         async function saveAndGeneratePDF() {
             const { PDFDocument } = PDFLib;
             
             try {
                 const fileData = await currentFile.arrayBuffer();
                 let pdfDoc;
-                let page;
 
-                // Cek apakah file adalah PDF atau Gambar
+                // Load PDF atau Gambar
                 if (currentFile.type === 'application/pdf') {
-                    // Jika PDF: Muat dokumen yang ada
                     pdfDoc = await PDFDocument.load(fileData);
-                    const pages = pdfDoc.getPages();
-                    // Ambil halaman paling akhir untuk diberi tanda tangan
-                    page = pages[pages.length - 1]; 
                 } else if (currentFile.type === 'image/jpeg' || currentFile.type === 'image/png') {
-                    // Jika Gambar: Buat PDF baru
                     pdfDoc = await PDFDocument.create();
                     let image = currentFile.type === 'image/jpeg' ? 
                                 await pdfDoc.embedJpg(fileData) : 
                                 await pdfDoc.embedPng(fileData);
-                    
-                    page = pdfDoc.addPage([image.width, image.height]);
+                    const page = pdfDoc.addPage([image.width, image.height]);
                     page.drawImage(image, { x: 0, y: 0, width: image.width, height: image.height });
                 } else {
                     alert("Format tidak didukung. Harap upload file JPG, PNG, atau PDF.");
                     return;
                 }
 
-                // Ambil gambar tanda tangan dari kanvas
+                // Siapkan gambar tanda tangan dari kanvas
                 const sigDataUrl = canvas.toDataURL('image/png');
                 const sigBytes = await fetch(sigDataUrl).then(res => res.arrayBuffer());
                 const sigImage = await pdfDoc.embedPng(sigBytes);
 
-                // Ukuran tanda tangan
                 const sigWidth = 200; 
                 const sigHeight = 100;
+                const position = document.getElementById('sig-position').value;
+
+                // Fungsi internal untuk menempelkan gambar ke halaman tertentu
+                const applySignature = (targetPage) => {
+                    const { width, height } = targetPage.getSize();
+                    let xPos;
+                    const yPos = 50; // Jarak dari bawah
+
+                    if (position === 'left') {
+                        xPos = 50;
+                    } else if (position === 'center') {
+                        xPos = (width - sigWidth) / 2;
+                    } else {
+                        xPos = width - sigWidth - 50; // Default Kanan
+                    }
+
+                    targetPage.drawImage(sigImage, {
+                        x: xPos, 
+                        y: yPos, 
+                        width: sigWidth, 
+                        height: sigHeight,
+                    });
+                };
+
+                // Eksekusi penempelan berdasarkan pilihan pengguna
+                const pages = pdfDoc.getPages();
                 
-                // Ambil dimensi halaman saat ini
-                const { width, height } = page.getSize();
+                if (currentFile.type === 'application/pdf') {
+                    const pageSelection = document.getElementById('page-selection').value;
+                    
+                    if (pageSelection === 'all') {
+                        // Loop ke semua halaman (Paraf)
+                        pages.forEach(p => applySignature(p));
+                    } else if (pageSelection === 'specific') {
+                        // Halaman spesifik
+                        const pageNum = parseInt(document.getElementById('specific-page-input').value);
+                        if (pageNum > 0 && pageNum <= pages.length) {
+                            applySignature(pages[pageNum - 1]);
+                        } else {
+                            alert("Nomor halaman tidak valid atau melebihi jumlah halaman dokumen!");
+                            return;
+                        }
+                    } else {
+                        // Default: Halaman terakhir
+                        applySignature(pages[pages.length - 1]);
+                    }
+                } else {
+                    // Jika file sumber adalah gambar, cukup tempel di halaman tunggal tersebut
+                    applySignature(pages[0]);
+                }
 
-                // Tempel tanda tangan di pojok kanan bawah
-                page.drawImage(sigImage, {
-                    x: width - sigWidth - 50,
-                    y: 50,
-                    width: sigWidth,
-                    height: sigHeight,
-                });
-
-                // Simpan dan Download PDF
+                // Simpan dan Download
                 const pdfBytes = await pdfDoc.save();
                 const blob = new Blob([pdfBytes], { type: 'application/pdf' });
                 const link = document.createElement('a');
