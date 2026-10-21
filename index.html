@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Super Easy</title>
+    <!-- Tailwind CSS untuk UI/UX Responsif -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- PDF-Lib untuk manipulasi PDF -->
+    <script src="https://unpkg.com/pdf-lib"></script>
+    <!-- FontAwesome (Opsional untuk Ikon) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans antialiased min-h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="bg-blue-600 text-white p-4 shadow-md text-center">
+        <h1 class="text-2xl font-bold"><i class="fa-solid fa-file-pdf mr-2"></i>PDF Super Easy</h1>
+        <p class="text-sm opacity-80 mt-1">Edit, Sign, & Convert langsung dari browser Anda</p>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-grow p-4 md:p-8 flex flex-col items-center">
+        
+        <!-- Upload Area (Mirip dengan Dropzone) -->
+        <div class="w-full max-w-2xl bg-white border-2 border-dashed border-blue-300 rounded-xl p-8 text-center hover:bg-blue-50 transition duration-300 cursor-pointer mb-6" id="dropzone" onclick="document.getElementById('file-upload').click()">
+            <i class="fa-solid fa-cloud-arrow-up text-5xl text-blue-500 mb-4"></i>
+            <h2 class="text-xl font-semibold mb-2">Upload File Anda</h2>
+            <p class="text-gray-500 text-sm mb-4">Pilih file PDF atau Gambar dari perangkat Anda</p>
+            <input type="file" id="file-upload" class="hidden" accept=".pdf, image/png, image/jpeg" />
+            <button class="bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 transition">Pilih File</button>
+            <p id="file-name" class="mt-4 text-sm font-semibold text-green-600 hidden"></p>
+        </div>
+
+        <!-- Menu Action (Awalnya disembunyikan, muncul setelah file diupload) -->
+        <div id="action-menu" class="w-full max-w-2xl grid grid-cols-1 md:grid-cols-3 gap-4 hidden">
+            <!-- Tombol Sign -->
+            <button onclick="startSignProcess()" class="bg-white p-4 rounded-xl shadow border border-gray-200 hover:border-blue-500 hover:shadow-md transition flex flex-col items-center justify-center text-center group">
+                <div class="bg-green-100 p-3 rounded-full mb-3 group-hover:bg-green-200 transition">
+                    <i class="fa-solid fa-signature text-green-600 text-xl"></i>
+                </div>
+                <h3 class="font-semibold">Tanda Tangan</h3>
+                <p class="text-xs text-gray-500 mt-1">Bubuhi tanda tangan digital</p>
+            </button>
+
+            <!-- Tombol Edit/Modif -->
+            <button class="bg-white p-4 rounded-xl shadow border border-gray-200 hover:border-blue-500 hover:shadow-md transition flex flex-col items-center justify-center text-center group">
+                <div class="bg-purple-100 p-3 rounded-full mb-3 group-hover:bg-purple-200 transition">
+                    <i class="fa-solid fa-object-ungroup text-purple-600 text-xl"></i>
+                </div>
+                <h3 class="font-semibold">Modifikasi</h3>
+                <p class="text-xs text-gray-500 mt-1">Hapus/Gabung halaman</p>
+            </button>
+
+            <!-- Tombol Convert -->
+            <button class="bg-white p-4 rounded-xl shadow border border-gray-200 hover:border-blue-500 hover:shadow-md transition flex flex-col items-center justify-center text-center group">
+                <div class="bg-orange-100 p-3 rounded-full mb-3 group-hover:bg-orange-200 transition">
+                    <i class="fa-solid fa-file-export text-orange-600 text-xl"></i>
+                </div>
+                <h3 class="font-semibold">Convert</h3>
+                <p class="text-xs text-gray-500 mt-1">Ubah ke format PDF</p>
+            </button>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white text-center p-4 text-sm mt-auto">
+        <p>&copy; 2026 - PDF Super Easy Tool</p>
+    </footer>
+
+    <!-- JavaScript Logika UI Interaktif -->
+    <script>
+        const fileInput = document.getElementById('file-upload');
+        const fileNameDisplay = document.getElementById('file-name');
+        const actionMenu = document.getElementById('action-menu');
+        const dropzone = document.getElementById('dropzone');
+
+        let currentFile = null;
+
+        // Saat file dipilih
+        fileInput.addEventListener('change', function(e) {
+            if(e.target.files.length > 0) {
+                currentFile = e.target.files[0];
+                
+                // Tampilkan nama file
+                fileNameDisplay.textContent = "File terpilih: " + currentFile.name;
+                fileNameDisplay.classList.remove('hidden');
+                
+                // Perkecil ukuran dropzone agar rapi di layar
+                dropzone.classList.remove('py-8');
+                dropzone.classList.add('py-4');
+                
+                // Tampilkan menu aksi
+                actionMenu.classList.remove('hidden');
+            }
+        });
+
+        // Contoh fungsi jika tombol Tanda Tangan ditekan
+        function startSignProcess() {
+            if(!currentFile) return alert("Pilih file terlebih dahulu!");
+            
+            // Di sini nantinya kita akan panggil HTML5 Canvas 
+            // untuk mendeteksi sentuhan jari/mouse, 
+            // lalu menempelkannya ke dokumen menggunakan pdf-lib.
+            alert("Membuka kanvas tanda tangan untuk file: " + currentFile.name);
+        }
+    </script>
+</body>
+</html>
