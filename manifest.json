@@ -1,0 +1,16 @@
+{
+  "name": "PDF Super Easy",
+  "short_name": "PDF Easy",
+  "description": "Sign, Auto-Sign, & Convert PDF Anywhere",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2563eb",
+  "icons": [
+    {
+      "src": "logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
