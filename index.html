@@ -32,7 +32,8 @@
             border: 1px dashed blue;
             background-color: rgba(255, 255, 255, 0.3);
             touch-action: none;
-            width: 150px;
+            width: 150px; /* Default size */
+            height: auto; /* Proportional resize */
         }
     </style>
 </head>
@@ -83,14 +84,23 @@
                 <h2 class="text-xl font-semibold mb-2">3. Position Your Signature</h2>
                 <p class="text-sm text-gray-500 mb-4 text-center">Drag and drop the signature box to your desired location on the document.</p>
                 
-                <div class="flex items-center gap-2 mb-4">
-                    <label class="text-sm font-medium">Preview Page:</label>
-                    <input type="number" id="page-number" class="border rounded w-16 text-center py-1" value="1" min="1" onchange="renderPDFPage(this.value)">
-                    <span id="page-count" class="text-sm text-gray-500">of -</span>
+                <div class="flex flex-col md:flex-row items-center gap-6 mb-4 w-full justify-center">
+                    <!-- Page Selector -->
+                    <div class="flex items-center gap-2">
+                        <label class="text-sm font-medium text-gray-700">Preview Page:</label>
+                        <input type="number" id="page-number" class="border border-gray-300 rounded w-16 text-center py-1 focus:outline-none focus:border-blue-500" value="1" min="1" onchange="renderPDFPage(this.value)">
+                        <span id="page-count" class="text-sm text-gray-500">of -</span>
+                    </div>
+
+                    <!-- Size Slider (Fitur Resize) -->
+                    <div class="flex items-center gap-3 bg-gray-50 px-4 py-2 rounded-lg border border-gray-200 w-full md:w-auto">
+                        <label class="text-sm font-medium text-gray-700 whitespace-nowrap"><i class="fa-solid fa-magnifying-glass-plus mr-1"></i> Size:</label>
+                        <input type="range" id="sig-size-slider" min="50" max="350" value="150" class="w-32 cursor-pointer" oninput="resizeSignature(this.value)">
+                    </div>
                 </div>
 
                 <!-- Area Preview -->
-                <div id="pdf-render-container" class="overflow-hidden border border-gray-300">
+                <div id="pdf-render-container" class="overflow-hidden border border-gray-300 mt-2">
                     <canvas id="pdf-canvas"></canvas>
                     <img id="draggable-sig" src="" alt="Signature" draggable="false">
                 </div>
@@ -157,6 +167,12 @@
             document.getElementById('apply-all-pages').checked = false;
             toggleAutoParaf();
             clearCanvas();
+            
+            // Reset ukuran slider ke default
+            if(document.getElementById('sig-size-slider')) {
+                document.getElementById('sig-size-slider').value = 150;
+                document.getElementById('draggable-sig').style.width = '150px';
+            }
         }
 
         document.getElementById('file-upload').addEventListener('change', async function(e) {
@@ -310,8 +326,19 @@
             await page.render(renderContext).promise;
 
             const sigImg = document.getElementById('draggable-sig');
-            sigImg.style.left = (viewport.width / 2 - 75) + 'px';
-            sigImg.style.top = (viewport.height / 2 - 37) + 'px';
+            
+            // Jaga posisi tanda tangan agar tidak keluar dari kanvas saat pindah halaman
+            let currentLeft = parseInt(sigImg.style.left) || (viewport.width / 2 - (sigImg.clientWidth / 2));
+            let currentTop = parseInt(sigImg.style.top) || (viewport.height / 2 - (sigImg.clientHeight / 2));
+            
+            sigImg.style.left = Math.min(currentLeft, viewport.width - sigImg.clientWidth) + 'px';
+            sigImg.style.top = Math.min(currentTop, viewport.height - sigImg.clientHeight) + 'px';
+        }
+
+        // FUNGSI RESIZE
+        function resizeSignature(newWidth) {
+            const sigEl = document.getElementById('draggable-sig');
+            sigEl.style.width = newWidth + 'px';
         }
 
         const sigEl = document.getElementById('draggable-sig');
