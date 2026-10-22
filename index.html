@@ -4,153 +4,121 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PDF Super Easy</title>
-    <!-- Tailwind CSS untuk UI/UX Responsif -->
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- PDF-Lib untuk manipulasi PDF -->
     <script src="https://unpkg.com/pdf-lib"></script>
-    <!-- FontAwesome untuk Ikon -->
+    <!-- PDF.js untuk Render/Preview PDF di Browser -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        /* Gaya untuk area drag and drop tanda tangan */
+        #pdf-render-container {
+            position: relative;
+            display: inline-block;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        #draggable-sig {
+            position: absolute;
+            top: 50px;
+            left: 50px;
+            cursor: move;
+            border: 1px dashed blue;
+            background-color: rgba(255, 255, 255, 0.3);
+            touch-action: none; /* Mencegah layar scroll saat menggeser gambar di HP */
+            width: 150px; /* Ukuran default stiker tanda tangan */
+        }
+    </style>
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans antialiased min-h-screen flex flex-col">
 
-    <!-- Header -->
     <header class="bg-blue-600 text-white p-4 shadow-md text-center">
         <h1 class="text-2xl font-bold"><i class="fa-solid fa-file-pdf mr-2"></i>PDF Super Easy</h1>
-        <p class="text-sm opacity-80 mt-1">Edit, Sign, & Convert langsung dari browser Anda</p>
+        <p class="text-sm opacity-80 mt-1">Sign & Drag Tanda Tangan Bebas di Mana Pun</p>
     </header>
 
-    <!-- Main Content -->
     <main class="flex-grow p-4 md:p-8 flex flex-col items-center">
         
-        <!-- Upload Area -->
-        <div class="w-full max-w-2xl bg-white border-2 border-dashed border-blue-300 rounded-xl p-8 text-center hover:bg-blue-50 transition duration-300 cursor-pointer mb-6" id="dropzone" onclick="document.getElementById('file-upload').click()">
+        <!-- STEP 1: Upload Area -->
+        <div id="step-1" class="w-full max-w-2xl bg-white border-2 border-dashed border-blue-300 rounded-xl p-8 text-center hover:bg-blue-50 transition mb-6">
             <i class="fa-solid fa-cloud-arrow-up text-5xl text-blue-500 mb-4"></i>
-            <h2 class="text-xl font-semibold mb-2">Upload File Anda</h2>
-            <p class="text-gray-500 text-sm mb-4">Pilih file PDF atau Gambar (JPG/PNG) dari perangkat Anda</p>
+            <h2 class="text-xl font-semibold mb-2">1. Upload Dokumen</h2>
+            <p class="text-gray-500 text-sm mb-4">Pilih file PDF atau Gambar (JPG/PNG)</p>
             <input type="file" id="file-upload" class="hidden" accept="image/png, image/jpeg, .pdf" />
-            <button class="bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 transition">Pilih File</button>
+            <button onclick="document.getElementById('file-upload').click()" class="bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 transition">Pilih File</button>
             <p id="file-name" class="mt-4 text-sm font-semibold text-green-600 hidden"></p>
         </div>
 
-        <!-- Menu Action -->
-        <div id="action-menu" class="w-full max-w-2xl grid grid-cols-1 md:grid-cols-3 gap-4 hidden">
-            <!-- Tombol Sign -->
-            <button onclick="startSignProcess()" class="bg-white p-4 rounded-xl shadow border border-gray-200 hover:border-blue-500 hover:shadow-md transition flex flex-col items-center justify-center text-center group">
-                <div class="bg-green-100 p-3 rounded-full mb-3 group-hover:bg-green-200 transition">
-                    <i class="fa-solid fa-signature text-green-600 text-xl"></i>
-                </div>
-                <h3 class="font-semibold">Tanda Tangan</h3>
-                <p class="text-xs text-gray-500 mt-1">Bubuhi tanda tangan digital</p>
-            </button>
-
-            <!-- Tombol Edit/Modif -->
-            <button class="bg-white p-4 rounded-xl shadow border border-gray-200 hover:border-blue-500 hover:shadow-md transition flex flex-col items-center justify-center text-center group opacity-50 cursor-not-allowed" title="Fitur menyusul">
-                <div class="bg-purple-100 p-3 rounded-full mb-3">
-                    <i class="fa-solid fa-object-ungroup text-purple-600 text-xl"></i>
-                </div>
-                <h3 class="font-semibold">Modifikasi</h3>
-                <p class="text-xs text-gray-500 mt-1">Hapus/Gabung halaman</p>
-            </button>
-
-            <!-- Tombol Convert -->
-            <button class="bg-white p-4 rounded-xl shadow border border-gray-200 hover:border-blue-500 hover:shadow-md transition flex flex-col items-center justify-center text-center group opacity-50 cursor-not-allowed" title="Fitur menyusul">
-                <div class="bg-orange-100 p-3 rounded-full mb-3">
-                    <i class="fa-solid fa-file-export text-orange-600 text-xl"></i>
-                </div>
-                <h3 class="font-semibold">Convert</h3>
-                <p class="text-xs text-gray-500 mt-1">Ubah ke format PDF</p>
-            </button>
-        </div>
-
-        <!-- Signature Area (Kanvas & Pengaturan Tanda Tangan) -->
-        <div id="signature-area" class="w-full max-w-2xl hidden flex-col items-center mt-6">
-            <h3 class="text-lg font-semibold mb-4 text-gray-700">Pengaturan Tanda Tangan:</h3>
-            
-            <!-- Pilihan Halaman & Posisi -->
-            <div class="w-full flex flex-col md:flex-row justify-center gap-4 mb-6">
-                <!-- Dropdown Halaman -->
-                <div class="flex flex-col items-start w-full md:w-1/2">
-                    <label class="text-sm text-gray-600 font-medium mb-1">Target Halaman (Khusus PDF):</label>
-                    <select id="page-selection" onchange="toggleSpecificPage()" class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
-                        <option value="last">Halaman Terakhir Saja</option>
-                        <option value="all">Semua Halaman (Untuk Paraf)</option>
-                        <option value="specific">Halaman Tertentu...</option>
-                    </select>
-                    <input type="number" id="specific-page-input" class="hidden w-full border border-gray-300 rounded px-3 py-2 text-sm mt-2" min="1" placeholder="Masukkan Nomor Halaman (Misal: 2)">
-                </div>
-
-                <!-- Dropdown Posisi -->
-                <div class="flex flex-col items-start w-full md:w-1/2">
-                    <label class="text-sm text-gray-600 font-medium mb-1">Posisi Tanda Tangan:</label>
-                    <select id="sig-position" class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
-                        <option value="right">Kanan Bawah</option>
-                        <option value="left">Kiri Bawah</option>
-                        <option value="center">Tengah Bawah</option>
-                    </select>
-                </div>
-            </div>
-
-            <h3 class="text-md font-semibold mb-2 text-gray-700">Silakan Coret di Bawah:</h3>
-            <!-- Kanvas touch-none penting agar layar HP tidak ikut ter-scroll saat tanda tangan -->
-            <canvas id="sig-canvas" width="300" height="150" class="border-2 border-dashed border-gray-400 rounded-lg bg-white shadow-inner touch-none cursor-crosshair"></canvas>
-            
-            <div class="mt-6 flex gap-4">
+        <!-- STEP 2: Kanvas Tanda Tangan -->
+        <div id="step-2" class="w-full max-w-2xl hidden flex-col items-center mb-6 bg-white p-6 rounded-xl shadow border border-gray-200">
+            <h2 class="text-xl font-semibold mb-4">2. Buat Tanda Tangan</h2>
+            <canvas id="sig-canvas" width="300" height="150" class="border-2 border-dashed border-gray-400 rounded-lg bg-gray-50 touch-none cursor-crosshair"></canvas>
+            <div class="mt-4 flex gap-4">
                 <button onclick="clearCanvas()" class="bg-red-100 text-red-600 px-4 py-2 rounded-lg font-medium hover:bg-red-200 transition">Hapus Ulang</button>
-                <button onclick="saveAndGeneratePDF()" class="bg-green-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-700 transition">Selesai & Download PDF</button>
+                <button onclick="preparePreview()" class="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition">Lanjut ke Preview <i class="fa-solid fa-arrow-right ml-1"></i></button>
             </div>
         </div>
+
+        <!-- STEP 3: Preview PDF & Drag Tanda Tangan -->
+        <div id="step-3" class="w-full hidden flex-col items-center mb-6">
+            <div class="bg-white p-4 rounded-xl shadow border border-gray-200 w-full max-w-4xl flex flex-col items-center">
+                <h2 class="text-xl font-semibold mb-2">3. Geser Tanda Tangan Anda</h2>
+                <p class="text-sm text-gray-500 mb-4">Tahan dan geser (drag) kotak tanda tangan ke posisi yang Anda inginkan.</p>
+                
+                <div class="flex items-center gap-2 mb-4">
+                    <label class="text-sm font-medium">Halaman ke:</label>
+                    <input type="number" id="page-number" class="border rounded w-16 text-center py-1" value="1" min="1" onchange="renderPDFPage(this.value)">
+                    <span id="page-count" class="text-sm text-gray-500">dari -</span>
+                </div>
+
+                <!-- Area Preview -->
+                <div id="pdf-render-container" class="overflow-hidden border border-gray-300">
+                    <canvas id="pdf-canvas"></canvas>
+                    <!-- Elemen Stiker Tanda Tangan -->
+                    <img id="draggable-sig" src="" alt="Signature" draggable="false">
+                </div>
+
+                <button onclick="generateFinalPDF()" class="mt-6 bg-green-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-green-700 transition shadow-lg w-full max-w-xs">
+                    <i class="fa-solid fa-download mr-2"></i> Download PDF
+                </button>
+            </div>
+        </div>
+
     </main>
 
-    <!-- Footer -->
     <footer class="bg-gray-800 text-white text-center p-4 text-sm mt-auto">
         <p>&copy; 2026 - PDF Super Easy Tool</p>
     </footer>
 
-    <!-- JavaScript Logika UI & PDF -->
     <script>
-        const fileInput = document.getElementById('file-upload');
-        const fileNameDisplay = document.getElementById('file-name');
-        const actionMenu = document.getElementById('action-menu');
-        const dropzone = document.getElementById('dropzone');
-        const signatureArea = document.getElementById('signature-area');
-        
-        let currentFile = null;
+        // Setup PDF.js Worker
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
 
-        // 1. Menangani Upload File
-        fileInput.addEventListener('change', function(e) {
+        // Variabel Global
+        let currentFile = null;
+        let pdfBytesMemory = null; // Menyimpan PDF mentah
+        let pdfjsDocument = null; // Menyimpan PDF.js object
+        let currentPdfPage = 1;
+        let renderedScale = 1; // Menyimpan skala render
+
+        // --- STEP 1: UPLOAD LOGIC ---
+        document.getElementById('file-upload').addEventListener('change', async function(e) {
             if(e.target.files.length > 0) {
                 currentFile = e.target.files[0];
-                fileNameDisplay.textContent = "File terpilih: " + currentFile.name;
-                fileNameDisplay.classList.remove('hidden');
-                dropzone.classList.remove('py-8');
-                dropzone.classList.add('py-4');
-                actionMenu.classList.remove('hidden');
-                signatureArea.classList.add('hidden'); // Sembunyikan kanvas jika upload ulang
+                document.getElementById('file-name').textContent = "File terpilih: " + currentFile.name;
+                document.getElementById('file-name').classList.remove('hidden');
+                
+                // Pindah ke step 2
+                document.getElementById('step-1').classList.add('hidden');
+                document.getElementById('step-2').classList.remove('hidden');
+                document.getElementById('step-2').classList.add('flex');
+                initCanvas();
             }
         });
 
-        // 2. Fungsi memunculkan kanvas
-        function startSignProcess() {
-            if(!currentFile) return alert("Pilih file terlebih dahulu!");
-            
-            actionMenu.classList.add('hidden');
-            signatureArea.classList.remove('hidden');
-            signatureArea.classList.add('flex');
-            initCanvas();
-        }
-
-        // 3. Fungsi memunculkan input nomor halaman jika dipilih
-        function toggleSpecificPage() {
-            const select = document.getElementById('page-selection').value;
-            const input = document.getElementById('specific-page-input');
-            if (select === 'specific') {
-                input.classList.remove('hidden');
-            } else {
-                input.classList.add('hidden');
-            }
-        }
-
-        // 4. Logika Menggambar di Kanvas (Mouse & Touch)
+        // --- STEP 2: CANVAS LOGIC ---
         const canvas = document.getElementById('sig-canvas');
         const ctx = canvas.getContext('2d');
         let isDrawing = false;
@@ -159,7 +127,7 @@
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.lineWidth = 3;
             ctx.lineCap = "round";
-            ctx.strokeStyle = "#000000"; // Tinta warna hitam
+            ctx.strokeStyle = "#000000"; // Tinta Hitam
         }
 
         function getCoordinates(e) {
@@ -170,16 +138,8 @@
             return { x: e.clientX - rect.left, y: e.clientY - rect.top };
         }
 
-        function startPosition(e) {
-            isDrawing = true;
-            draw(e);
-        }
-
-        function endPosition() {
-            isDrawing = false;
-            ctx.beginPath();
-        }
-
+        function startPosition(e) { isDrawing = true; draw(e); }
+        function endPosition() { isDrawing = false; ctx.beginPath(); }
         function draw(e) {
             if (!isDrawing) return;
             e.preventDefault(); 
@@ -190,117 +150,189 @@
             ctx.moveTo(pos.x, pos.y);
         }
 
-        // Event Listener Mouse
         canvas.addEventListener('mousedown', startPosition);
         canvas.addEventListener('mouseup', endPosition);
         canvas.addEventListener('mousemove', draw);
-        
-        // Event Listener Touch (Untuk HP)
         canvas.addEventListener('touchstart', startPosition, {passive: false});
         canvas.addEventListener('touchend', endPosition);
         canvas.addEventListener('touchmove', draw, {passive: false});
 
-        function clearCanvas() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-        }
+        function clearCanvas() { ctx.clearRect(0, 0, canvas.width, canvas.height); }
 
-        // 5. Logika Membuat PDF dengan pdf-lib (Mendukung PDF & Gambar, Posisi, & Halaman)
-        async function saveAndGeneratePDF() {
-            const { PDFDocument } = PDFLib;
-            
+        // --- STEP 3: PREVIEW & DRAG LOGIC ---
+        async function preparePreview() {
             try {
-                const fileData = await currentFile.arrayBuffer();
-                let pdfDoc;
+                // 1. Ambil tanda tangan
+                const sigDataUrl = canvas.toDataURL('image/png');
+                const sigImgEl = document.getElementById('draggable-sig');
+                sigImgEl.src = sigDataUrl;
 
-                // Load PDF atau Gambar
+                // 2. Standarisasi file ke format PDF
+                const { PDFDocument } = PDFLib;
+                const fileData = await currentFile.arrayBuffer();
+
                 if (currentFile.type === 'application/pdf') {
-                    pdfDoc = await PDFDocument.load(fileData);
+                    pdfBytesMemory = new Uint8Array(fileData);
                 } else if (currentFile.type === 'image/jpeg' || currentFile.type === 'image/png') {
-                    pdfDoc = await PDFDocument.create();
-                    let image = currentFile.type === 'image/jpeg' ? 
-                                await pdfDoc.embedJpg(fileData) : 
-                                await pdfDoc.embedPng(fileData);
-                    const page = pdfDoc.addPage([image.width, image.height]);
+                    // Jika gambar, ubah jadi PDF di memori
+                    const tempPdf = await PDFDocument.create();
+                    let image = currentFile.type === 'image/jpeg' ? await tempPdf.embedJpg(fileData) : await tempPdf.embedPng(fileData);
+                    const page = tempPdf.addPage([image.width, image.height]);
                     page.drawImage(image, { x: 0, y: 0, width: image.width, height: image.height });
-                } else {
-                    alert("Format tidak didukung. Harap upload file JPG, PNG, atau PDF.");
-                    return;
+                    pdfBytesMemory = await tempPdf.save();
                 }
 
-                // Siapkan gambar tanda tangan dari kanvas
+                // 3. Render dengan PDF.js
+                const loadingTask = pdfjsLib.getDocument({ data: pdfBytesMemory });
+                pdfjsDocument = await loadingTask.promise;
+                
+                document.getElementById('page-count').textContent = "dari " + pdfjsDocument.numPages;
+                document.getElementById('page-number').max = pdfjsDocument.numPages;
+                
+                await renderPDFPage(1); // Render halaman 1
+
+                // Pindah UI
+                document.getElementById('step-2').classList.add('hidden');
+                document.getElementById('step-3').classList.remove('hidden');
+                document.getElementById('step-3').classList.add('flex');
+            } catch (err) {
+                alert("Gagal memuat dokumen. Pastikan file tidak rusak.");
+                console.error(err);
+            }
+        }
+
+        async function renderPDFPage(pageNum) {
+            pageNum = parseInt(pageNum);
+            if(pageNum < 1 || pageNum > pdfjsDocument.numPages) return;
+            currentPdfPage = pageNum;
+
+            const page = await pdfjsDocument.getPage(pageNum);
+            const pdfCanvas = document.getElementById('pdf-canvas');
+            const pdfCtx = pdfCanvas.getContext('2d');
+
+            // Hitung skala agar pas di layar max lebar 800px
+            const unscaledViewport = page.getViewport({ scale: 1 });
+            const containerWidth = Math.min(window.innerWidth - 40, 800);
+            renderedScale = containerWidth / unscaledViewport.width;
+            
+            const viewport = page.getViewport({ scale: renderedScale });
+            pdfCanvas.width = viewport.width;
+            pdfCanvas.height = viewport.height;
+
+            const renderContext = { canvasContext: pdfCtx, viewport: viewport };
+            await page.render(renderContext).promise;
+
+            // Reset posisi stiker ke tengah
+            const sigImg = document.getElementById('draggable-sig');
+            sigImg.style.left = (viewport.width / 2 - 75) + 'px';
+            sigImg.style.top = (viewport.height / 2 - 37) + 'px';
+        }
+
+        // --- DRAG AND DROP EVENTS ---
+        const sigEl = document.getElementById('draggable-sig');
+        const containerEl = document.getElementById('pdf-render-container');
+        let isDraggingSig = false;
+        let startX, startY, initialLeft, initialTop;
+
+        function dragStart(e) {
+            isDraggingSig = true;
+            const event = e.touches ? e.touches[0] : e;
+            startX = event.clientX;
+            startY = event.clientY;
+            initialLeft = parseInt(sigEl.style.left || 0);
+            initialTop = parseInt(sigEl.style.top || 0);
+        }
+
+        function dragMove(e) {
+            if (!isDraggingSig) return;
+            e.preventDefault(); // Cegah scroll layar
+            const event = e.touches ? e.touches[0] : e;
+            
+            let deltaX = event.clientX - startX;
+            let deltaY = event.clientY - startY;
+            
+            let newLeft = initialLeft + deltaX;
+            let newTop = initialTop + deltaY;
+
+            // Batasi pergerakan agar tidak keluar dari kanvas PDF
+            const maxLeft = containerEl.clientWidth - sigEl.clientWidth;
+            const maxTop = containerEl.clientHeight - sigEl.clientHeight;
+            
+            newLeft = Math.max(0, Math.min(newLeft, maxLeft));
+            newTop = Math.max(0, Math.min(newTop, maxTop));
+
+            sigEl.style.left = newLeft + 'px';
+            sigEl.style.top = newTop + 'px';
+        }
+
+        function dragEnd() { isDraggingSig = false; }
+
+        sigEl.addEventListener('mousedown', dragStart);
+        window.addEventListener('mousemove', dragMove);
+        window.addEventListener('mouseup', dragEnd);
+        
+        sigEl.addEventListener('touchstart', dragStart, {passive: false});
+        window.addEventListener('touchmove', dragMove, {passive: false});
+        window.addEventListener('touchend', dragEnd);
+
+
+        // --- STEP 4: GENERATE FINAL PDF ---
+        async function generateFinalPDF() {
+            try {
+                const { PDFDocument } = PDFLib;
+                const pdfDoc = await PDFDocument.load(pdfBytesMemory);
+                const pages = pdfDoc.getPages();
+                
+                // Halaman target (indeks mulai dari 0)
+                const targetPage = pages[currentPdfPage - 1]; 
+                
+                // Ambil dimensi asli halaman PDF
+                const { width: originalPdfWidth, height: originalPdfHeight } = targetPage.getSize();
+                
+                // Ambil data stiker di layar
+                const cssLeft = parseFloat(sigEl.style.left);
+                const cssTop = parseFloat(sigEl.style.top);
+                const cssWidth = sigEl.clientWidth;
+                const cssHeight = sigEl.clientHeight;
+
+                // KALKULASI KOORDINAT:
+                // Layar web (X dari kiri, Y dari Atas). PDF asli (X dari kiri, Y dari BAWAH)
+                // Kita harus mengkonversi dari skala layar ke skala PDF asli, lalu membalikkan sumbu Y
+                const realX = cssLeft / renderedScale;
+                const realYTop = cssTop / renderedScale;
+                const realWidth = cssWidth / renderedScale;
+                const realHeight = cssHeight / renderedScale;
+                
+                // Balik sumbu Y (Titik Y di PDF-lib adalah sudut kiri bawah gambar)
+                const realYBottom = originalPdfHeight - realYTop - realHeight;
+
+                // Tanamkan Tanda Tangan
                 const sigDataUrl = canvas.toDataURL('image/png');
                 const sigBytes = await fetch(sigDataUrl).then(res => res.arrayBuffer());
                 const sigImage = await pdfDoc.embedPng(sigBytes);
 
-                const sigWidth = 200; 
-                const sigHeight = 100;
-                const position = document.getElementById('sig-position').value;
+                targetPage.drawImage(sigImage, {
+                    x: realX,
+                    y: realYBottom,
+                    width: realWidth,
+                    height: realHeight,
+                });
 
-                // Fungsi internal untuk menempelkan gambar ke halaman tertentu
-                const applySignature = (targetPage) => {
-                    const { width, height } = targetPage.getSize();
-                    let xPos;
-                    const yPos = 50; // Jarak dari bawah
-
-                    if (position === 'left') {
-                        xPos = 50;
-                    } else if (position === 'center') {
-                        xPos = (width - sigWidth) / 2;
-                    } else {
-                        xPos = width - sigWidth - 50; // Default Kanan
-                    }
-
-                    targetPage.drawImage(sigImage, {
-                        x: xPos, 
-                        y: yPos, 
-                        width: sigWidth, 
-                        height: sigHeight,
-                    });
-                };
-
-                // Eksekusi penempelan berdasarkan pilihan pengguna
-                const pages = pdfDoc.getPages();
-                
-                if (currentFile.type === 'application/pdf') {
-                    const pageSelection = document.getElementById('page-selection').value;
-                    
-                    if (pageSelection === 'all') {
-                        // Loop ke semua halaman (Paraf)
-                        pages.forEach(p => applySignature(p));
-                    } else if (pageSelection === 'specific') {
-                        // Halaman spesifik
-                        const pageNum = parseInt(document.getElementById('specific-page-input').value);
-                        if (pageNum > 0 && pageNum <= pages.length) {
-                            applySignature(pages[pageNum - 1]);
-                        } else {
-                            alert("Nomor halaman tidak valid atau melebihi jumlah halaman dokumen!");
-                            return;
-                        }
-                    } else {
-                        // Default: Halaman terakhir
-                        applySignature(pages[pages.length - 1]);
-                    }
-                } else {
-                    // Jika file sumber adalah gambar, cukup tempel di halaman tunggal tersebut
-                    applySignature(pages[0]);
-                }
-
-                // Simpan dan Download
-                const pdfBytes = await pdfDoc.save();
-                const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+                // Simpan & Unduh
+                const finalPdfBytes = await pdfDoc.save();
+                const blob = new Blob([finalPdfBytes], { type: 'application/pdf' });
                 const link = document.createElement('a');
                 link.href = URL.createObjectURL(blob);
                 
-                // Hapus ekstensi lama, ganti jadi .pdf
                 const originalName = currentFile.name.split('.').slice(0, -1).join('.');
-                link.download = "Signed_" + originalName + ".pdf";
-                
+                link.download = "Signed_Custom_" + originalName + ".pdf";
                 link.click();
-                alert("Berhasil! File PDF Anda sedang diunduh.");
                 
-            } catch (error) {
-                console.error("Error generating PDF:", error);
-                alert("Terjadi kesalahan saat memproses file. Pastikan file tidak dikunci (password).");
+                alert("Berhasil! PDF telah diunduh dengan tanda tangan di posisi yang Anda tentukan.");
+                
+            } catch (err) {
+                console.error(err);
+                alert("Gagal memproses dokumen.");
             }
         }
     </script>
