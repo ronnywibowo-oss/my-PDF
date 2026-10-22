@@ -58,6 +58,8 @@
                 <button onclick="clearCanvas()" class="bg-red-100 text-red-600 px-4 py-2 rounded-lg font-medium hover:bg-red-200 transition">Hapus Ulang</button>
                 <button onclick="preparePreview()" class="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition">Lanjut ke Preview <i class="fa-solid fa-arrow-right ml-1"></i></button>
             </div>
+            <!-- Tombol Batal -->
+            <button onclick="resetApp()" class="mt-4 text-sm text-gray-400 hover:text-gray-600 underline">Batal & Pilih File Lain</button>
         </div>
 
         <!-- STEP 3: Preview PDF & Drag Tanda Tangan -->
@@ -94,9 +96,15 @@
                     </div>
                 </div>
 
-                <button onclick="generateFinalPDF()" class="mt-6 bg-green-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-green-700 transition shadow-lg w-full max-w-xs">
-                    <i class="fa-solid fa-download mr-2"></i> Download PDF
-                </button>
+                <!-- Tombol Action -->
+                <div class="mt-6 flex flex-col md:flex-row gap-4 w-full max-w-md">
+                    <button onclick="resetApp()" class="bg-gray-200 text-gray-700 px-6 py-3 rounded-xl font-bold hover:bg-gray-300 transition w-full md:w-1/3">
+                        <i class="fa-solid fa-rotate-left mr-2"></i> File Lain
+                    </button>
+                    <button onclick="generateFinalPDF()" class="bg-green-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-green-700 transition shadow-lg w-full md:w-2/3">
+                        <i class="fa-solid fa-download mr-2"></i> Download PDF
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -114,6 +122,37 @@
         let pdfjsDocument = null; 
         let currentPdfPage = 1;
         let renderedScale = 1; 
+
+        // --- FUNGSI RESET APP (Mulai dari awal) ---
+        function resetApp() {
+            // Reset Variabel
+            currentFile = null;
+            pdfBytesMemory = null; 
+            pdfjsDocument = null; 
+            currentPdfPage = 1;
+            renderedScale = 1;
+
+            // Reset File Input
+            document.getElementById('file-upload').value = '';
+            document.getElementById('file-name').classList.add('hidden');
+            document.getElementById('file-name').textContent = '';
+
+            // Reset UI Steps
+            document.getElementById('step-3').classList.add('hidden');
+            document.getElementById('step-3').classList.remove('flex');
+            
+            document.getElementById('step-2').classList.add('hidden');
+            document.getElementById('step-2').classList.remove('flex');
+            
+            document.getElementById('step-1').classList.remove('hidden');
+
+            // Reset Checkbox & Options
+            document.getElementById('apply-all-pages').checked = false;
+            toggleAutoParaf();
+
+            // Bersihkan kanvas
+            clearCanvas();
+        }
 
         document.getElementById('file-upload').addEventListener('change', async function(e) {
             if(e.target.files.length > 0) {
@@ -190,11 +229,9 @@
                 const loadingTask = pdfjsLib.getDocument({ data: pdfBytesMemory });
                 pdfjsDocument = await loadingTask.promise;
                 
-                // Set total halaman pada UI
                 document.getElementById('page-count').textContent = "dari " + pdfjsDocument.numPages;
                 document.getElementById('page-number').max = pdfjsDocument.numPages;
                 
-                // Set nilai maksimal dan default untuk input auto-paraf
                 document.getElementById('start-page-input').max = pdfjsDocument.numPages;
                 document.getElementById('end-page-input').max = pdfjsDocument.numPages;
                 document.getElementById('end-page-input').value = pdfjsDocument.numPages;
@@ -279,7 +316,6 @@
         window.addEventListener('touchmove', dragMove, {passive: false});
         window.addEventListener('touchend', dragEnd);
 
-        // --- FUNGSI MUNCULKAN OPSI AUTO PARAF ---
         function toggleAutoParaf() {
             const checkbox = document.getElementById('apply-all-pages');
             const options = document.getElementById('auto-paraf-options');
@@ -292,14 +328,12 @@
             }
         }
 
-        // --- STEP 4: GENERATE FINAL PDF ---
         async function generateFinalPDF() {
             try {
                 const { PDFDocument } = PDFLib;
                 const pdfDoc = await PDFDocument.load(pdfBytesMemory);
                 const pages = pdfDoc.getPages();
                 
-                // Ambil ukuran halaman yang sedang dirender sebagai patokan skala
                 const targetPage = pages[currentPdfPage - 1]; 
                 const { width: originalPdfWidth, height: originalPdfHeight } = targetPage.getSize();
                 
@@ -308,7 +342,6 @@
                 const cssWidth = sigEl.clientWidth;
                 const cssHeight = sigEl.clientHeight;
 
-                // Hitung koordinat X dan Y asli
                 const realX = cssLeft / renderedScale;
                 const realYTop = cssTop / renderedScale;
                 const realWidth = cssWidth / renderedScale;
