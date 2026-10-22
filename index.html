@@ -1,14 +1,14 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PDF Super Easy</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- PDF-Lib untuk manipulasi PDF -->
+    <!-- PDF-Lib -->
     <script src="https://unpkg.com/pdf-lib"></script>
-    <!-- PDF.js untuk Render/Preview PDF di Browser -->
+    <!-- PDF.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
     <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -35,7 +35,7 @@
 
     <header class="bg-blue-600 text-white p-4 shadow-md text-center">
         <h1 class="text-2xl font-bold"><i class="fa-solid fa-file-pdf mr-2"></i>PDF Super Easy</h1>
-        <p class="text-sm opacity-80 mt-1">Sign, Auto Paraf, & Convert PDF</p>
+        <p class="text-sm opacity-80 mt-1">Sign, Auto-Sign, & Convert PDF Anywhere</p>
     </header>
 
     <main class="flex-grow p-4 md:p-8 flex flex-col items-center">
@@ -43,45 +43,45 @@
         <!-- STEP 1: Upload Area -->
         <div id="step-1" class="w-full max-w-2xl bg-white border-2 border-dashed border-blue-300 rounded-xl p-8 text-center hover:bg-blue-50 transition mb-6">
             <i class="fa-solid fa-cloud-arrow-up text-5xl text-blue-500 mb-4"></i>
-            <h2 class="text-xl font-semibold mb-2">1. Upload Dokumen</h2>
-            <p class="text-gray-500 text-sm mb-4">Pilih file PDF atau Gambar (JPG/PNG)</p>
+            <h2 class="text-xl font-semibold mb-2">1. Upload Document</h2>
+            <p class="text-gray-500 text-sm mb-4">Select a PDF or Image (JPG/PNG) file</p>
             <input type="file" id="file-upload" class="hidden" accept="image/png, image/jpeg, .pdf" />
-            <button onclick="document.getElementById('file-upload').click()" class="bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 transition">Pilih File</button>
+            <button onclick="document.getElementById('file-upload').click()" class="bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 transition">Choose File</button>
             <p id="file-name" class="mt-4 text-sm font-semibold text-green-600 hidden"></p>
         </div>
 
         <!-- STEP 2: Kanvas Tanda Tangan ATAU Convert -->
         <div id="step-2" class="w-full max-w-2xl hidden flex-col items-center mb-6 bg-white p-6 rounded-xl shadow border border-gray-200">
-            <h2 class="text-xl font-semibold mb-4 text-center">2. Buat Tanda Tangan / Paraf</h2>
+            <h2 class="text-xl font-semibold mb-4 text-center">2. Draw Signature / Initials</h2>
             <canvas id="sig-canvas" width="300" height="150" class="border-2 border-dashed border-gray-400 rounded-lg bg-gray-50 touch-none cursor-crosshair"></canvas>
             
             <div class="mt-4 flex gap-4">
-                <button onclick="clearCanvas()" class="bg-red-100 text-red-600 px-4 py-2 rounded-lg font-medium hover:bg-red-200 transition">Hapus Ulang</button>
-                <button onclick="preparePreview()" class="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition">Lanjut ke Preview <i class="fa-solid fa-arrow-right ml-1"></i></button>
+                <button onclick="clearCanvas()" class="bg-red-100 text-red-600 px-4 py-2 rounded-lg font-medium hover:bg-red-200 transition">Clear Canvas</button>
+                <button onclick="preparePreview()" class="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition">Continue to Preview <i class="fa-solid fa-arrow-right ml-1"></i></button>
             </div>
             
             <!-- Jalan Pintas: Convert Only -->
             <div class="mt-6 w-full border-t border-gray-200 pt-4 flex flex-col items-center">
-                <p class="text-sm text-gray-500 mb-3">Hanya butuh convert gambar ke PDF (tanpa TTD)?</p>
+                <p class="text-sm text-gray-500 mb-3">Image to PDF Only:</p>
                 <button onclick="convertOnlyToPDF()" class="bg-orange-500 text-white px-6 py-2 rounded-lg font-medium hover:bg-orange-600 transition shadow">
-                    <i class="fa-solid fa-file-export mr-2"></i> Langsung Convert ke PDF
+                    <i class="fa-solid fa-file-export mr-2"></i> Convert to PDF
                 </button>
             </div>
 
             <!-- Tombol Batal -->
-            <button onclick="resetApp()" class="mt-4 text-sm text-gray-400 hover:text-gray-600 underline">Batal & Pilih File Lain</button>
+            <button onclick="resetApp()" class="mt-4 text-sm text-gray-400 hover:text-gray-600 underline">Cancel & Choose Another File</button>
         </div>
 
         <!-- STEP 3: Preview PDF & Drag Tanda Tangan -->
         <div id="step-3" class="w-full hidden flex-col items-center mb-6">
             <div class="bg-white p-4 rounded-xl shadow border border-gray-200 w-full max-w-4xl flex flex-col items-center">
-                <h2 class="text-xl font-semibold mb-2">3. Posisikan Tanda Tangan</h2>
-                <p class="text-sm text-gray-500 mb-4 text-center">Geser kotak tanda tangan ke posisi yang Anda inginkan pada dokumen.</p>
+                <h2 class="text-xl font-semibold mb-2">3. Position Your Signature</h2>
+                <p class="text-sm text-gray-500 mb-4 text-center">Drag and drop the signature box to your desired location on the document.</p>
                 
                 <div class="flex items-center gap-2 mb-4">
-                    <label class="text-sm font-medium">Preview Halaman ke:</label>
+                    <label class="text-sm font-medium">Preview Page:</label>
                     <input type="number" id="page-number" class="border rounded w-16 text-center py-1" value="1" min="1" onchange="renderPDFPage(this.value)">
-                    <span id="page-count" class="text-sm text-gray-500">dari -</span>
+                    <span id="page-count" class="text-sm text-gray-500">of -</span>
                 </div>
 
                 <!-- Area Preview -->
@@ -90,17 +90,17 @@
                     <img id="draggable-sig" src="" alt="Signature" draggable="false">
                 </div>
 
-                <!-- Opsi Auto Paraf Fleksibel -->
+                <!-- Opsi Auto Paraf -->
                 <div class="mt-6 w-full max-w-md bg-blue-50 p-4 rounded-lg border border-blue-200">
                     <div class="flex items-center">
                         <input type="checkbox" id="apply-all-pages" class="w-5 h-5 text-blue-600 rounded cursor-pointer" onchange="toggleAutoParaf()">
-                        <label for="apply-all-pages" class="ml-3 text-sm font-semibold text-blue-800 cursor-pointer">Auto Paraf (Terapkan ke banyak halaman)</label>
+                        <label for="apply-all-pages" class="ml-3 text-sm font-semibold text-blue-800 cursor-pointer">Auto-Sign (Apply to multiple pages)</label>
                     </div>
                     
                     <div id="auto-paraf-options" class="hidden items-center mt-3 text-sm pl-8 flex-wrap gap-2">
-                        <label class="font-medium text-blue-800">Dari hal:</label>
+                        <label class="font-medium text-blue-800">From page:</label>
                         <input type="number" id="start-page-input" class="border border-blue-300 rounded w-16 text-center py-1" value="2" min="1">
-                        <label class="font-medium text-blue-800">sampai hal:</label>
+                        <label class="font-medium text-blue-800">to page:</label>
                         <input type="number" id="end-page-input" class="border border-blue-300 rounded w-16 text-center py-1" min="1">
                     </div>
                 </div>
@@ -108,7 +108,7 @@
                 <!-- Tombol Action -->
                 <div class="mt-6 flex flex-col md:flex-row gap-4 w-full max-w-md">
                     <button onclick="resetApp()" class="bg-gray-200 text-gray-700 px-6 py-3 rounded-xl font-bold hover:bg-gray-300 transition w-full md:w-1/3">
-                        <i class="fa-solid fa-rotate-left mr-2"></i> File Lain
+                        <i class="fa-solid fa-rotate-left mr-2"></i> Reset
                     </button>
                     <button onclick="generateFinalPDF()" class="bg-green-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-green-700 transition shadow-lg w-full md:w-2/3">
                         <i class="fa-solid fa-download mr-2"></i> Download PDF
@@ -132,7 +132,6 @@
         let currentPdfPage = 1;
         let renderedScale = 1; 
 
-        // --- FUNGSI RESET APP ---
         function resetApp() {
             currentFile = null;
             pdfBytesMemory = null; 
@@ -158,7 +157,7 @@
         document.getElementById('file-upload').addEventListener('change', async function(e) {
             if(e.target.files.length > 0) {
                 currentFile = e.target.files[0];
-                document.getElementById('file-name').textContent = "File terpilih: " + currentFile.name;
+                document.getElementById('file-name').textContent = "Selected file: " + currentFile.name;
                 document.getElementById('file-name').classList.remove('hidden');
                 
                 document.getElementById('step-1').classList.add('hidden');
@@ -208,9 +207,8 @@
 
         function clearCanvas() { ctx.clearRect(0, 0, canvas.width, canvas.height); }
 
-        // --- FUNGSI BARU: CONVERT TO PDF ONLY ---
         async function convertOnlyToPDF() {
-            if(!currentFile) return alert("Pilih file terlebih dahulu!");
+            if(!currentFile) return alert("Please select a file first!");
             
             try {
                 const { PDFDocument } = PDFLib;
@@ -218,20 +216,17 @@
                 let pdfBytesToDownload;
 
                 if (currentFile.type === 'application/pdf') {
-                    // Jika sudah PDF, langsung unduh saja ulang (atau bisa bypass)
                     pdfBytesToDownload = new Uint8Array(fileData);
                 } else if (currentFile.type === 'image/jpeg' || currentFile.type === 'image/png') {
-                    // Jika gambar, ubah menjadi PDF A4 / ukuran gambar
                     const tempPdf = await PDFDocument.create();
                     let image = currentFile.type === 'image/jpeg' ? await tempPdf.embedJpg(fileData) : await tempPdf.embedPng(fileData);
                     const page = tempPdf.addPage([image.width, image.height]);
                     page.drawImage(image, { x: 0, y: 0, width: image.width, height: image.height });
                     pdfBytesToDownload = await tempPdf.save();
                 } else {
-                    return alert("Format tidak didukung.");
+                    return alert("Unsupported format. Please upload JPG, PNG, or PDF.");
                 }
 
-                // Proses Download
                 const blob = new Blob([pdfBytesToDownload], { type: 'application/pdf' });
                 const link = document.createElement('a');
                 link.href = URL.createObjectURL(blob);
@@ -240,12 +235,12 @@
                 link.download = "Converted_" + originalName + ".pdf";
                 link.click();
                 
-                alert("File berhasil diconvert dan diunduh!");
-                resetApp(); // Kembali ke halaman awal setelah berhasil
+                alert("File converted and downloaded successfully!");
+                resetApp(); 
                 
             } catch (err) {
                 console.error(err);
-                alert("Gagal melakukan konversi.");
+                alert("Failed to convert file.");
             }
         }
 
@@ -271,7 +266,7 @@
                 const loadingTask = pdfjsLib.getDocument({ data: pdfBytesMemory });
                 pdfjsDocument = await loadingTask.promise;
                 
-                document.getElementById('page-count').textContent = "dari " + pdfjsDocument.numPages;
+                document.getElementById('page-count').textContent = "of " + pdfjsDocument.numPages;
                 document.getElementById('page-number').max = pdfjsDocument.numPages;
                 
                 document.getElementById('start-page-input').max = pdfjsDocument.numPages;
@@ -284,7 +279,7 @@
                 document.getElementById('step-3').classList.remove('hidden');
                 document.getElementById('step-3').classList.add('flex');
             } catch (err) {
-                alert("Gagal memuat dokumen. Pastikan file tidak rusak.");
+                alert("Failed to load document. Please ensure the file is not corrupted.");
                 console.error(err);
             }
         }
@@ -356,6 +351,7 @@
         window.addEventListener('mouseup', dragEnd);
         sigEl.addEventListener('touchstart', dragStart, {passive: false});
         window.addEventListener('touchmove', dragMove, {passive: false});
+        window.addEventListener('touchmove', function(e) { if(isDraggingSig) e.preventDefault(); }, {passive: false});
         window.addEventListener('touchend', dragEnd);
 
         function toggleAutoParaf() {
@@ -435,12 +431,12 @@
                 link.download = "Signed_" + originalName + ".pdf";
                 link.click();
                 
-                alert("Berhasil! PDF telah diunduh.");
+                alert("Success! PDF has been downloaded.");
                 resetApp();
                 
             } catch (err) {
                 console.error(err);
-                alert("Gagal memproses dokumen.");
+                alert("Failed to process document.");
             }
         }
     </script>
