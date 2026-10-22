@@ -35,7 +35,7 @@
 
     <header class="bg-blue-600 text-white p-4 shadow-md text-center">
         <h1 class="text-2xl font-bold"><i class="fa-solid fa-file-pdf mr-2"></i>PDF Super Easy</h1>
-        <p class="text-sm opacity-80 mt-1">Sign & Auto Paraf Bebas di Mana Pun</p>
+        <p class="text-sm opacity-80 mt-1">Sign, Auto Paraf, & Convert PDF</p>
     </header>
 
     <main class="flex-grow p-4 md:p-8 flex flex-col items-center">
@@ -50,14 +50,24 @@
             <p id="file-name" class="mt-4 text-sm font-semibold text-green-600 hidden"></p>
         </div>
 
-        <!-- STEP 2: Kanvas Tanda Tangan -->
+        <!-- STEP 2: Kanvas Tanda Tangan ATAU Convert -->
         <div id="step-2" class="w-full max-w-2xl hidden flex-col items-center mb-6 bg-white p-6 rounded-xl shadow border border-gray-200">
-            <h2 class="text-xl font-semibold mb-4">2. Buat Tanda Tangan / Paraf</h2>
+            <h2 class="text-xl font-semibold mb-4 text-center">2. Buat Tanda Tangan / Paraf</h2>
             <canvas id="sig-canvas" width="300" height="150" class="border-2 border-dashed border-gray-400 rounded-lg bg-gray-50 touch-none cursor-crosshair"></canvas>
+            
             <div class="mt-4 flex gap-4">
                 <button onclick="clearCanvas()" class="bg-red-100 text-red-600 px-4 py-2 rounded-lg font-medium hover:bg-red-200 transition">Hapus Ulang</button>
                 <button onclick="preparePreview()" class="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition">Lanjut ke Preview <i class="fa-solid fa-arrow-right ml-1"></i></button>
             </div>
+            
+            <!-- Jalan Pintas: Convert Only -->
+            <div class="mt-6 w-full border-t border-gray-200 pt-4 flex flex-col items-center">
+                <p class="text-sm text-gray-500 mb-3">Hanya butuh convert gambar ke PDF (tanpa TTD)?</p>
+                <button onclick="convertOnlyToPDF()" class="bg-orange-500 text-white px-6 py-2 rounded-lg font-medium hover:bg-orange-600 transition shadow">
+                    <i class="fa-solid fa-file-export mr-2"></i> Langsung Convert ke PDF
+                </button>
+            </div>
+
             <!-- Tombol Batal -->
             <button onclick="resetApp()" class="mt-4 text-sm text-gray-400 hover:text-gray-600 underline">Batal & Pilih File Lain</button>
         </div>
@@ -87,7 +97,6 @@
                         <label for="apply-all-pages" class="ml-3 text-sm font-semibold text-blue-800 cursor-pointer">Auto Paraf (Terapkan ke banyak halaman)</label>
                     </div>
                     
-                    <!-- Pilihan rentang halaman -->
                     <div id="auto-paraf-options" class="hidden items-center mt-3 text-sm pl-8 flex-wrap gap-2">
                         <label class="font-medium text-blue-800">Dari hal:</label>
                         <input type="number" id="start-page-input" class="border border-blue-300 rounded w-16 text-center py-1" value="2" min="1">
@@ -123,34 +132,26 @@
         let currentPdfPage = 1;
         let renderedScale = 1; 
 
-        // --- FUNGSI RESET APP (Mulai dari awal) ---
+        // --- FUNGSI RESET APP ---
         function resetApp() {
-            // Reset Variabel
             currentFile = null;
             pdfBytesMemory = null; 
             pdfjsDocument = null; 
             currentPdfPage = 1;
             renderedScale = 1;
 
-            // Reset File Input
             document.getElementById('file-upload').value = '';
             document.getElementById('file-name').classList.add('hidden');
             document.getElementById('file-name').textContent = '';
 
-            // Reset UI Steps
             document.getElementById('step-3').classList.add('hidden');
             document.getElementById('step-3').classList.remove('flex');
-            
             document.getElementById('step-2').classList.add('hidden');
             document.getElementById('step-2').classList.remove('flex');
-            
             document.getElementById('step-1').classList.remove('hidden');
 
-            // Reset Checkbox & Options
             document.getElementById('apply-all-pages').checked = false;
             toggleAutoParaf();
-
-            // Bersihkan kanvas
             clearCanvas();
         }
 
@@ -206,6 +207,47 @@
         canvas.addEventListener('touchmove', draw, {passive: false});
 
         function clearCanvas() { ctx.clearRect(0, 0, canvas.width, canvas.height); }
+
+        // --- FUNGSI BARU: CONVERT TO PDF ONLY ---
+        async function convertOnlyToPDF() {
+            if(!currentFile) return alert("Pilih file terlebih dahulu!");
+            
+            try {
+                const { PDFDocument } = PDFLib;
+                const fileData = await currentFile.arrayBuffer();
+                let pdfBytesToDownload;
+
+                if (currentFile.type === 'application/pdf') {
+                    // Jika sudah PDF, langsung unduh saja ulang (atau bisa bypass)
+                    pdfBytesToDownload = new Uint8Array(fileData);
+                } else if (currentFile.type === 'image/jpeg' || currentFile.type === 'image/png') {
+                    // Jika gambar, ubah menjadi PDF A4 / ukuran gambar
+                    const tempPdf = await PDFDocument.create();
+                    let image = currentFile.type === 'image/jpeg' ? await tempPdf.embedJpg(fileData) : await tempPdf.embedPng(fileData);
+                    const page = tempPdf.addPage([image.width, image.height]);
+                    page.drawImage(image, { x: 0, y: 0, width: image.width, height: image.height });
+                    pdfBytesToDownload = await tempPdf.save();
+                } else {
+                    return alert("Format tidak didukung.");
+                }
+
+                // Proses Download
+                const blob = new Blob([pdfBytesToDownload], { type: 'application/pdf' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                
+                const originalName = currentFile.name.split('.').slice(0, -1).join('.');
+                link.download = "Converted_" + originalName + ".pdf";
+                link.click();
+                
+                alert("File berhasil diconvert dan diunduh!");
+                resetApp(); // Kembali ke halaman awal setelah berhasil
+                
+            } catch (err) {
+                console.error(err);
+                alert("Gagal melakukan konversi.");
+            }
+        }
 
         async function preparePreview() {
             try {
@@ -390,10 +432,11 @@
                 link.href = URL.createObjectURL(blob);
                 
                 const originalName = currentFile.name.split('.').slice(0, -1).join('.');
-                link.download = "Signed_Custom_" + originalName + ".pdf";
+                link.download = "Signed_" + originalName + ".pdf";
                 link.click();
                 
                 alert("Berhasil! PDF telah diunduh.");
+                resetApp();
                 
             } catch (err) {
                 console.error(err);
