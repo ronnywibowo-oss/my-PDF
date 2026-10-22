@@ -14,7 +14,6 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
-        /* Gaya untuk area drag and drop tanda tangan */
         #pdf-render-container {
             position: relative;
             display: inline-block;
@@ -76,14 +75,23 @@
                 <!-- Area Preview -->
                 <div id="pdf-render-container" class="overflow-hidden border border-gray-300">
                     <canvas id="pdf-canvas"></canvas>
-                    <!-- Elemen Stiker Tanda Tangan -->
                     <img id="draggable-sig" src="" alt="Signature" draggable="false">
                 </div>
 
-                <!-- Opsi Auto Paraf Semua Halaman -->
-                <div class="mt-6 flex items-center bg-blue-50 p-3 rounded-lg border border-blue-200 cursor-pointer" onclick="document.getElementById('apply-all-pages').click()">
-                    <input type="checkbox" id="apply-all-pages" class="w-5 h-5 text-blue-600 rounded cursor-pointer pointer-events-none">
-                    <label class="ml-3 text-sm font-semibold text-blue-800 cursor-pointer pointer-events-none">Terapkan posisi ini ke SEMUA halaman (Auto Paraf)</label>
+                <!-- Opsi Auto Paraf Fleksibel -->
+                <div class="mt-6 w-full max-w-md bg-blue-50 p-4 rounded-lg border border-blue-200">
+                    <div class="flex items-center">
+                        <input type="checkbox" id="apply-all-pages" class="w-5 h-5 text-blue-600 rounded cursor-pointer" onchange="toggleAutoParaf()">
+                        <label for="apply-all-pages" class="ml-3 text-sm font-semibold text-blue-800 cursor-pointer">Auto Paraf (Terapkan ke banyak halaman)</label>
+                    </div>
+                    
+                    <!-- Pilihan rentang halaman -->
+                    <div id="auto-paraf-options" class="hidden items-center mt-3 text-sm pl-8 flex-wrap gap-2">
+                        <label class="font-medium text-blue-800">Dari hal:</label>
+                        <input type="number" id="start-page-input" class="border border-blue-300 rounded w-16 text-center py-1" value="2" min="1">
+                        <label class="font-medium text-blue-800">sampai hal:</label>
+                        <input type="number" id="end-page-input" class="border border-blue-300 rounded w-16 text-center py-1" min="1">
+                    </div>
                 </div>
 
                 <button onclick="generateFinalPDF()" class="mt-6 bg-green-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-green-700 transition shadow-lg w-full max-w-xs">
@@ -107,7 +115,6 @@
         let currentPdfPage = 1;
         let renderedScale = 1; 
 
-        // --- STEP 1: UPLOAD LOGIC ---
         document.getElementById('file-upload').addEventListener('change', async function(e) {
             if(e.target.files.length > 0) {
                 currentFile = e.target.files[0];
@@ -121,7 +128,6 @@
             }
         });
 
-        // --- STEP 2: CANVAS LOGIC ---
         const canvas = document.getElementById('sig-canvas');
         const ctx = canvas.getContext('2d');
         let isDrawing = false;
@@ -162,7 +168,6 @@
 
         function clearCanvas() { ctx.clearRect(0, 0, canvas.width, canvas.height); }
 
-        // --- STEP 3: PREVIEW & DRAG LOGIC ---
         async function preparePreview() {
             try {
                 const sigDataUrl = canvas.toDataURL('image/png');
@@ -185,8 +190,14 @@
                 const loadingTask = pdfjsLib.getDocument({ data: pdfBytesMemory });
                 pdfjsDocument = await loadingTask.promise;
                 
+                // Set total halaman pada UI
                 document.getElementById('page-count').textContent = "dari " + pdfjsDocument.numPages;
                 document.getElementById('page-number').max = pdfjsDocument.numPages;
+                
+                // Set nilai maksimal dan default untuk input auto-paraf
+                document.getElementById('start-page-input').max = pdfjsDocument.numPages;
+                document.getElementById('end-page-input').max = pdfjsDocument.numPages;
+                document.getElementById('end-page-input').value = pdfjsDocument.numPages;
                 
                 await renderPDFPage(1); 
 
@@ -224,7 +235,6 @@
             sigImg.style.top = (viewport.height / 2 - 37) + 'px';
         }
 
-        // --- DRAG AND DROP EVENTS ---
         const sigEl = document.getElementById('draggable-sig');
         const containerEl = document.getElementById('pdf-render-container');
         let isDraggingSig = false;
@@ -265,20 +275,32 @@
         sigEl.addEventListener('mousedown', dragStart);
         window.addEventListener('mousemove', dragMove);
         window.addEventListener('mouseup', dragEnd);
-        
         sigEl.addEventListener('touchstart', dragStart, {passive: false});
         window.addEventListener('touchmove', dragMove, {passive: false});
         window.addEventListener('touchend', dragEnd);
 
+        // --- FUNGSI MUNCULKAN OPSI AUTO PARAF ---
+        function toggleAutoParaf() {
+            const checkbox = document.getElementById('apply-all-pages');
+            const options = document.getElementById('auto-paraf-options');
+            if (checkbox.checked) {
+                options.classList.remove('hidden');
+                options.classList.add('flex');
+            } else {
+                options.classList.add('hidden');
+                options.classList.remove('flex');
+            }
+        }
 
-        // --- STEP 4: GENERATE FINAL PDF (DENGAN FITUR AUTO PARAF) ---
+        // --- STEP 4: GENERATE FINAL PDF ---
         async function generateFinalPDF() {
             try {
                 const { PDFDocument } = PDFLib;
                 const pdfDoc = await PDFDocument.load(pdfBytesMemory);
                 const pages = pdfDoc.getPages();
-                const targetPage = pages[currentPdfPage - 1]; 
                 
+                // Ambil ukuran halaman yang sedang dirender sebagai patokan skala
+                const targetPage = pages[currentPdfPage - 1]; 
                 const { width: originalPdfWidth, height: originalPdfHeight } = targetPage.getSize();
                 
                 const cssLeft = parseFloat(sigEl.style.left);
@@ -286,35 +308,41 @@
                 const cssWidth = sigEl.clientWidth;
                 const cssHeight = sigEl.clientHeight;
 
-                // Hitung koordinat X dan Y asli di dokumen
+                // Hitung koordinat X dan Y asli
                 const realX = cssLeft / renderedScale;
                 const realYTop = cssTop / renderedScale;
                 const realWidth = cssWidth / renderedScale;
                 const realHeight = cssHeight / renderedScale;
-                
                 const realYBottom = originalPdfHeight - realYTop - realHeight;
 
                 const sigDataUrl = canvas.toDataURL('image/png');
                 const sigBytes = await fetch(sigDataUrl).then(res => res.arrayBuffer());
                 const sigImage = await pdfDoc.embedPng(sigBytes);
 
-                // Cek apakah mode Auto Paraf dicentang
                 const applyToAll = document.getElementById('apply-all-pages').checked;
 
                 if (applyToAll) {
-                    // Loop ke semua halaman
-                    pages.forEach((p) => {
+                    let startPageStr = document.getElementById('start-page-input').value;
+                    let endPageStr = document.getElementById('end-page-input').value;
+                    
+                    let startPageIndex = parseInt(startPageStr) - 1;
+                    let endPageIndex = parseInt(endPageStr) - 1;
+                    
+                    if (isNaN(startPageIndex) || startPageIndex < 0) startPageIndex = 0;
+                    if (isNaN(endPageIndex) || endPageIndex >= pages.length) endPageIndex = pages.length - 1;
+                    if (endPageIndex < startPageIndex) endPageIndex = startPageIndex;
+
+                    for (let i = startPageIndex; i <= endPageIndex; i++) {
+                        const p = pages[i];
                         const { height: pHeight } = p.getSize();
                         p.drawImage(sigImage, {
                             x: realX,
-                            // Kalkulasi jarak dari atas halaman agar konsisten meskipun ukuran halaman berbeda
                             y: pHeight - realYTop - realHeight, 
                             width: realWidth,
                             height: realHeight,
                         });
-                    });
+                    }
                 } else {
-                    // Hanya terapkan di halaman yang dipilih
                     targetPage.drawImage(sigImage, {
                         x: realX,
                         y: realYBottom,
@@ -323,7 +351,6 @@
                     });
                 }
 
-                // Simpan & Unduh
                 const finalPdfBytes = await pdfDoc.save();
                 const blob = new Blob([finalPdfBytes], { type: 'application/pdf' });
                 const link = document.createElement('a');
